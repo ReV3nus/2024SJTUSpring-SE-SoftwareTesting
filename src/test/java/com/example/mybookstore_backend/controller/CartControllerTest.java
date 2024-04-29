@@ -2,8 +2,10 @@ package com.example.mybookstore_backend.controller;
 
 import com.example.mybookstore_backend.entity.Book;
 import com.example.mybookstore_backend.entity.CartRecord;
+import com.example.mybookstore_backend.entity.User;
 import com.example.mybookstore_backend.service.BookService;
 import com.example.mybookstore_backend.service.CartService;
+import com.example.mybookstore_backend.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,7 +37,8 @@ class CartControllerTest {
 
     @Mock
     private HttpSession session;
-
+    @Mock
+    private UserService userService;
     @InjectMocks
     private CartController cartController;
 
@@ -44,7 +47,10 @@ class CartControllerTest {
         session = mock(HttpSession.class);
         bookService = mock(BookService.class);
         cartService = mock(CartService.class);
-        cartController = new CartController(cartService, bookService);
+        userService = mock(UserService.class);
+        cartController = new CartController(cartService, bookService, userService);
+        User user = new User("testUser", "a");
+        when(userService.findUser(any(String.class))).thenReturn(user);
     }
 
     @AfterEach
@@ -94,6 +100,9 @@ class CartControllerTest {
 
         // Act
         when(session.getAttribute("username")).thenReturn(username);
+        Book book = new Book(bookId, "Book Title", "Author","Image", "Isbn", 10);
+        when(bookService.findBookById(bookId)).thenReturn(book);
+
         ResponseEntity<Void> response = cartController.DeleteCart(bookId, session);
 
         // Assert

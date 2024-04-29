@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 @Data
 @Entity
@@ -42,6 +43,7 @@ public class OrderItem {
     }
     @JsonIgnore
     @ManyToOne
+    @ToString.Exclude
     @JoinColumn(name = "orderid")
     private OrderRecord orderRecord;
 }

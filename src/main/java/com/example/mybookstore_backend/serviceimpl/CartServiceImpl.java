@@ -11,8 +11,12 @@ import java.util.List;
 
 @Service
 public class CartServiceImpl implements CartService {
+
+    private final CartDao cartDao;
     @Autowired
-    private CartDao cartDao;
+    public CartServiceImpl(CartDao cartDao){
+        this.cartDao = cartDao;
+    }
     @Override
     public CartRecord AddRecordToCart(CartRecord record){
         return cartDao.AddRecord(record);

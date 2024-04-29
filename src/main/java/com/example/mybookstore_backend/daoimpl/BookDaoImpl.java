@@ -13,9 +13,13 @@ import java.util.Optional;
 @Repository
 public class BookDaoImpl implements BookDao {
 
-    @Autowired
-    private BookRepository bookRepository;
 
+    private final BookRepository bookRepository;
+
+    @Autowired
+    public BookDaoImpl(BookRepository bookRepository){
+        this.bookRepository = bookRepository;
+    }
     @Override
     public Book findOne(Integer id) {
         Optional<Book> optional = bookRepository.findById(id);

@@ -15,18 +15,34 @@ import java.util.Map;
 @RequestMapping("/apiBook")
 public class BooksController{
 
+
+    private final BookService bookService;
     @Autowired
-    private BookService bookService;
+    public BooksController(BookService bookService){
+        this.bookService = bookService;
+    }
     @GetMapping("/getbooks")
     public ResponseEntity<List<Book>> getBooks()
     {
-        return ResponseEntity.ok(bookService.getBooks());
+        List<Book> books;
+        books = bookService.getBooks();
+        return ResponseEntity.ok(books);
 //        return ;
     }
     @GetMapping("/getbook")
     public ResponseEntity<Book> getBook(@RequestParam("id") Integer id)
     {
-        return ResponseEntity.ok(bookService.findBookById(id));
+        if(id < 0)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        Book book;
+        book = bookService.findBookById(id);
+        if(book == null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return ResponseEntity.ok(book);
     }
     @PostMapping("/AddBook")
     public ResponseEntity<Book> addBook(@RequestBody Map<String, String> BookData)
@@ -38,27 +54,51 @@ public class BooksController{
         Integer inventory = Integer.parseInt(BookData.get("inventory"));
         Book newBook=new Book(name,author,url,isbn,inventory);
         bookService.SaveBook(newBook);
+        System.out.println(newBook);
         return ResponseEntity.ok().build();
     }
     @PostMapping("/ModifyBook")
     public ResponseEntity<Book> modifyBook(@RequestBody Map<String, String> BookData)
     {
-        int bookid=Integer.parseInt(BookData.get("bookid"));
+        String stringId = BookData.get("bookid");
+        int id=Integer.parseInt(stringId);
+        if(id < 0)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        Book book;
+        book = bookService.findBookById(id);
+        if(book == null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
         String name = BookData.get("name");
         String author = BookData.get("author");
         String url = BookData.get("url");
         String isbn = BookData.get("isbn");
         Integer inventory = Integer.parseInt(BookData.get("inventory"));
-        Book newBook=new Book(bookid,name,author,url,isbn,inventory);
+        Book newBook=new Book(id,name,author,url,isbn,inventory);
         bookService.SaveBook(newBook);
         return ResponseEntity.ok().build();
     }
     @PostMapping("/DeleteBook")
     public ResponseEntity<Book> deleteBook(@RequestBody Map<String,String> BookData)
     {
-        int bookid=Integer.parseInt(BookData.get("bookid"));
-        System.out.println(bookid);
-        bookService.DeleteBook(bookid);
+        String stringId = BookData.get("bookid");
+        int id=Integer.parseInt(stringId);
+        if(id < 0)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        Book book;
+        book = bookService.findBookById(id);
+        if(book == null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        System.out.println(id);
+        bookService.DeleteBook(id);
         return ResponseEntity.ok().build();
     }
 }

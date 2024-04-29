@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,7 @@ public class OrderRecord {
         return orderItems.size();
     }
     @JsonIgnore
+    @ToString.Exclude
     @OneToMany(mappedBy = "orderRecord",cascade = CascadeType.REMOVE)
     private List<OrderItem> orderItems = new ArrayList<>();
 }

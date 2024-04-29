@@ -18,27 +18,57 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/apiAccount")
 public class AccountController {
-    @Autowired
-    private AuthService authService;
-    @Autowired
-    private UserService userService;
 
+    private final AuthService authService;
+    private final UserService userService;
+
+    @Autowired
+    public AccountController(AuthService authService, UserService userService){
+        this.authService = authService;
+        this.userService = userService;
+    }
     @GetMapping("/checkLogin")
     public ResponseEntity<String> checkLogin(HttpSession session) {
-        String username=(String) session.getAttribute("username");
-        if(username!=null)
+        Object obj = session.getAttribute("username");
+        if(obj == null)
         {
-            return ResponseEntity.ok(username);
-        }
-        else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(username);
     }
     @GetMapping("/checkAdmin")
     public ResponseEntity<String> checkAdmin(HttpSession session) {
-        String auth=(String) session.getAttribute("authority");
+        Object obj = session.getAttribute("username");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        obj = session.getAttribute("authority");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String auth = obj.toString();
         if(auth!=null)
         {
             return ResponseEntity.ok(auth);
+        }
+        if(!Objects.equals(user.getUserAuth().getUsertype(), auth))
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         else
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -48,10 +78,12 @@ public class AccountController {
         String username = loginInfo.get("username");
         String password = loginInfo.get("password");
         UserAuth User=authService.findUser(username);
+        if(User == null)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         if(!Objects.equals(User.getPassword(), password))
         {
             String error="Wrong Password";
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
         session.setAttribute("username",username);
         session.setAttribute("authority",User.getUsertype());
@@ -74,8 +106,14 @@ public class AccountController {
         String username = (String) registerInfo.get("username");
         String password = (String) registerInfo.get("password");
         String email = (String) registerInfo.get("email");
+
+        User user = userService.findUser(username);
+        if(user != null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
         UserAuth userAuth=new UserAuth(username,password);
-        User user=new User(username,email);
+        user=new User(username,email);
         user.setUserAuth(userAuth);
         userAuth.setUser(user);
         authService.AddAuth(userAuth);
@@ -87,14 +125,34 @@ public class AccountController {
         String username = (String) request.get("username");
         String usertype = (String) request.get("usertype");
         System.out.println("Got username: "+username+" usertype: "+usertype);
+
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         UserAuth userAuth=authService.findUser(username);
-        if(userAuth==null)return ResponseEntity.notFound().build();
+        if(userAuth==null)
+            return ResponseEntity.notFound().build();
         userAuth.setUsertype(usertype);
         authService.AddAuth(userAuth);
         return ResponseEntity.ok().build();
     }
     @GetMapping("/getUsers")
     public ResponseEntity<List<UserAuth>> GetUsers(HttpSession session) {
+        Object obj = session.getAttribute("username");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         List<UserAuth> users=authService.GetAllUsers();
         return ResponseEntity.ok(users);
     }

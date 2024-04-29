@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public class CartDaoImpl implements CartDao {
 
-    private CartRepository cartRepository;
+    private final CartRepository cartRepository;
 
     @Autowired
     public CartDaoImpl(CartRepository cartRepository) {

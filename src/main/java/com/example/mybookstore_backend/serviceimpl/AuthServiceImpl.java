@@ -10,8 +10,11 @@ import java.util.List;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+    private final AuthDao authDao;
     @Autowired
-    private AuthDao authDao;
+    public AuthServiceImpl(AuthDao authDao){
+        this.authDao = authDao;
+    }
     @Override
     public UserAuth findUser(String user){return authDao.findUser(user);}
     @Override

@@ -1,14 +1,8 @@
 package com.example.mybookstore_backend.controller;
 
 import com.example.mybookstore_backend.controller.OrderController;
-import com.example.mybookstore_backend.entity.Book;
-import com.example.mybookstore_backend.entity.CartRecord;
-import com.example.mybookstore_backend.entity.OrderItem;
-import com.example.mybookstore_backend.entity.OrderRecord;
-import com.example.mybookstore_backend.service.BookService;
-import com.example.mybookstore_backend.service.CartService;
-import com.example.mybookstore_backend.service.OrderItemService;
-import com.example.mybookstore_backend.service.OrderService;
+import com.example.mybookstore_backend.entity.*;
+import com.example.mybookstore_backend.service.*;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +33,8 @@ class OrderControllerTest {
 
     @Mock
     private CartService cartService;
+    @Mock
+    private UserService userService;
 
     @Mock
     private HttpSession session;
@@ -53,7 +49,13 @@ class OrderControllerTest {
         orderItemService = mock(OrderItemService.class);
         bookService = mock(BookService.class);
         cartService = mock(CartService.class);
-        orderController = new OrderController(orderService, orderItemService, bookService, cartService);
+        userService = mock(UserService.class);
+        orderController = new OrderController(orderService, orderItemService, bookService, cartService, userService);
+        User user = new User("testUser", "a");
+        UserAuth auth = new UserAuth("testUser","a");
+        user.setUserAuth(auth);
+
+        when(userService.findUser(any(String.class))).thenReturn(user);
     }
 
     @Test
@@ -115,7 +117,13 @@ class OrderControllerTest {
     @Test
     public void testGetOrderIds_Admin() {
         // Arrange
-        String username = "admin";
+        String username = "testUser";
+        User user = new User("testUser", "a");
+        UserAuth auth = new UserAuth("testUser","a");
+        auth.setUsertype("Admin");
+        user.setUserAuth(auth);
+        when(userService.findUser(any(String.class))).thenReturn(user);
+
         when(session.getAttribute("username")).thenReturn(username);
         when(session.getAttribute("authority")).thenReturn("Admin");
         List<OrderRecord> orders = new ArrayList<>();

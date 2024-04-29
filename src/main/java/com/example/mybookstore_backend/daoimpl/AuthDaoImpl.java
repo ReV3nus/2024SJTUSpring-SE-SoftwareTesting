@@ -10,8 +10,12 @@ import java.util.List;
 
 @Repository
 public class AuthDaoImpl implements AuthDao {
+
+    private final AuthRepository authRepository;
     @Autowired
-    private AuthRepository authRepository;
+    public AuthDaoImpl(AuthRepository authRepository){
+        this.authRepository = authRepository;
+    }
     @Override
     public UserAuth findUser(String user)
     {

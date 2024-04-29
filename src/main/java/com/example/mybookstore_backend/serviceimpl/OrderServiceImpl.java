@@ -12,8 +12,12 @@ import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+
+    private final OrderDao orderDao;
     @Autowired
-    private OrderDao orderDao;
+    public OrderServiceImpl(OrderDao orderDao){
+        this.orderDao = orderDao;
+    }
     @Override
     public OrderRecord AddRecordToOrder(OrderRecord record){
         return orderDao.AddRecord(record);

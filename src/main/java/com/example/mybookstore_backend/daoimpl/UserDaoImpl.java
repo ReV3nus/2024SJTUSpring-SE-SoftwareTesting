@@ -8,8 +8,12 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class UserDaoImpl implements UserDao {
+
+    private final UserRepository userRepository;
     @Autowired
-    private UserRepository userRepository;
+    public UserDaoImpl(UserRepository userRepository){
+        this.userRepository = userRepository;
+    }
     @Override
     public User findUser(String user)
     {

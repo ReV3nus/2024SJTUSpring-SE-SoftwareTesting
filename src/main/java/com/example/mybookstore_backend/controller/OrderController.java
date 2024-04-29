@@ -1,16 +1,11 @@
 package com.example.mybookstore_backend.controller;
 
-import com.example.mybookstore_backend.entity.Book;
-import com.example.mybookstore_backend.entity.CartRecord;
-import com.example.mybookstore_backend.entity.OrderRecord;
-import com.example.mybookstore_backend.entity.OrderItem;
-import com.example.mybookstore_backend.service.BookService;
-import com.example.mybookstore_backend.service.CartService;
-import com.example.mybookstore_backend.service.OrderItemService;
-import com.example.mybookstore_backend.service.OrderService;
+import com.example.mybookstore_backend.entity.*;
+import com.example.mybookstore_backend.service.*;
 import jakarta.servlet.http.HttpSession;
 import org.aspectj.weaver.ast.Or;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,29 +17,48 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/apiOrder")
 public class OrderController {
-    @Autowired
-    private OrderService orderService;
-    @Autowired
-    private OrderItemService orderItemService;
-    @Autowired
-    private BookService bookService;
-    @Autowired
-    private CartService cartService;
+    private final OrderService orderService;
+    private final OrderItemService orderItemService;
+    private final BookService bookService;
+    private final CartService cartService;
+    private final UserService userService;
 
-    public OrderController(OrderService orderService, OrderItemService orderItemService, BookService bookService, CartService cartService) {
+    @Autowired
+    public OrderController(OrderService orderService, OrderItemService orderItemService, BookService bookService, CartService cartService, UserService userService) {
         this.orderService = orderService;
         this.orderItemService = orderItemService;
         this.cartService = cartService;
         this.bookService = bookService;
+        this.userService = userService;
     }
     @PostMapping("/addItem")
     public ResponseEntity<OrderItem> AddToOrder(@RequestBody Integer BookId, HttpSession session) {
-        String username=(String) session.getAttribute("username");
+        Object obj = session.getAttribute("username");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedDateTime = now.format(formatter);
-        Book optBook=bookService.findBookById(BookId);
 
+        Book optBook=bookService.findBookById(BookId);
+        System.out.println(optBook);
+        if(optBook == null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if(optBook.getInventory() <= 0)
+        {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         optBook.Remove(1);
         bookService.SaveBook(optBook);
 
@@ -62,7 +76,18 @@ public class OrderController {
     }
     @PostMapping("/cartPurchase")
     public ResponseEntity<OrderRecord> CartPurchase(HttpSession session) {
-        String username=(String) session.getAttribute("username");
+        Object obj = session.getAttribute("username");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         LocalDateTime now = LocalDateTime.now();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String formattedDateTime = now.format(formatter);
@@ -72,24 +97,56 @@ public class OrderController {
         List<CartRecord>UserCart=cartService.getCart(username);
         for (CartRecord cartRecord : UserCart) {
             Book optBook=bookService.findBookById(cartRecord.getBookid());
+            System.out.println(optBook);
             if(optBook == null)
-                return ResponseEntity.badRequest().build();
+            {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            if(optBook.getInventory() <= 0)
+            {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
             optBook.Remove(1);
             bookService.SaveBook(optBook);
+            System.out.println("Saved.");
 
-            OrderItem orderItem=new OrderItem(cartRecord.getBookid(),cartRecord.getBookname(),cartRecord.getAuthor(),cartRecord.getType(),cartRecord.getPrice(),cartRecord.getCount(),username);
+            OrderItem orderItem=new OrderItem(optBook.getBookId(),optBook.getName(),optBook.getAuthor(),optBook.getType(),optBook.getPrice(),optBook.getInventory(),username);
             orderItem.setOrderRecord(orderRecord);
             orderRecord.getOrderItems().add(orderItem);
             orderService.AddRecordToOrder(orderRecord);
             orderItemService.AddItemToOrder(orderItem);
         }
+        if(orderRecord.getOrderItems().size() == 0)
+        {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        System.out.println(orderRecord);
         cartService.ClearCart(username);
         return ResponseEntity.ok().build();
     }
     @GetMapping("/getOrderIds")
     public ResponseEntity<List<OrderRecord>> GetOrderIds(HttpSession session) {
-        String username=(String) session.getAttribute("username");
-        String usertype=(String) session.getAttribute("authority");
+        Object obj = session.getAttribute("username");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username= obj.toString();
+        User user = userService.findUser(username);
+        if(user == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        obj = session.getAttribute("authority");
+        if(obj == null)
+        {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String usertype = obj.toString();
+        if(!Objects.equals(user.getUserAuth().getUsertype(), usertype))
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         List<OrderRecord>ret = null;
         if(Objects.equals(usertype, "User")) {
@@ -98,12 +155,17 @@ public class OrderController {
         else if(Objects.equals(usertype, "Admin")){
             ret=orderService.getAllOrders();
         }
+        System.out.println(ret);
         return ResponseEntity.ok(ret);
     }
     @GetMapping("/getOrderItems")
     public ResponseEntity<List<OrderItem>> GetOrderItems(@RequestParam("oid") Integer oid) {
         System.out.println("get order id"+oid);
         OrderRecord orderRecord=orderService.getRecord(oid);
+        if(orderRecord == null)
+        {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
         List<OrderItem> orderItems=orderRecord.getOrderItems();
         return ResponseEntity.ok(orderItems);
     }
