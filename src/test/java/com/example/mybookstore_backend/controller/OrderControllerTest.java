@@ -44,49 +44,94 @@ class OrderControllerTest {
 
     @BeforeEach
     void setUp() {
+        String username = "testUser";
+        userService = mock(UserService.class);
+        User user = new User(username, "a");
+        UserAuth auth = new UserAuth(username,"a");
+        user.setUserAuth(auth);
+        when(userService.findUser(username)).thenReturn(user);
+
         session = mock(HttpSession.class);
+        when(session.getAttribute("username")).thenReturn(username);
+        when(session.getAttribute("authority")).thenReturn("User");
+
         orderService = mock(OrderService.class);
         orderItemService = mock(OrderItemService.class);
-        bookService = mock(BookService.class);
-        cartService = mock(CartService.class);
-        userService = mock(UserService.class);
-        orderController = new OrderController(orderService, orderItemService, bookService, cartService, userService);
-        User user = new User("testUser", "a");
-        UserAuth auth = new UserAuth("testUser","a");
-        user.setUserAuth(auth);
 
-        when(userService.findUser(any(String.class))).thenReturn(user);
+        bookService = mock(BookService.class);
+        Book book1 = new Book(1, "Book Title", "Author","Image", "Isbn", 10);
+        Book book2 = new Book(2, "Book Title", "Author","Image", "Isbn", 0);
+        when(bookService.findBookById(1)).thenReturn(book1);
+        when(bookService.findBookById(2)).thenReturn(book2);
+
+        cartService = mock(CartService.class);
+        List<CartRecord> userCart = new ArrayList<>();
+        userCart.add(new CartRecord(1, username, "Book", "Author", "Type", 10.0, 10));
+        when(cartService.getCart(username)).thenReturn(userCart);
+
+
+        orderController = new OrderController(orderService, orderItemService, bookService, cartService, userService);
     }
 
     @Test
     public void testAddToOrder_Success() {
-        // Arrange
-        int bookId = 1;
-        String username = "testUser";
-        Book book = new Book(bookId, "Book Title", "Author","Image", "Isbn", 10);
-        when(session.getAttribute("username")).thenReturn(username);
-        when(bookService.findBookById(any(Integer.class))).thenReturn(book);
-        ResponseEntity<OrderItem> expectedResponse = ResponseEntity.ok(new OrderItem());
-
         // Act
-        ResponseEntity<OrderItem> response = orderController.AddToOrder(bookId, session);
+        ResponseEntity<OrderItem> response = orderController.AddToOrder(1, session);
 
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
     @Test
+    public void testAddToOrder_Failed_InvalidSession() {
+        // Arrange
+        when(session.getAttribute("username")).thenReturn(null);
+
+        // Act
+        ResponseEntity<OrderItem> response = orderController.AddToOrder(1, session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    public void testAddToOrder_Failed_InvalidUsername() {
+        // Arrange
+        String username = "UnknownUser";
+        when(session.getAttribute("username")).thenReturn(username);
+
+        // Act
+        ResponseEntity<OrderItem> response = orderController.AddToOrder(1, session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    public void testAddToOrder_Failed_InvalidBook() {
+        // Arrange
+
+        // Act
+        ResponseEntity<OrderItem> response = orderController.AddToOrder(5, session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    public void testAddToOrder_Failed_InvalidInventory() {
+        // Arrange
+
+        // Act
+        ResponseEntity<OrderItem> response = orderController.AddToOrder(2, session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
     public void testCartPurchase_Success() {
         // Arrange
-        int bookId = 1;
-        String username = "testUser";
-        List<CartRecord> userCart = new ArrayList<>();
-        userCart.add(new CartRecord(1, username, "Book", "Author", "Type", 10.0, 10));
-        Book book = new Book(bookId, "Book Title", "Author","Image", "Isbn", 10);
-        when(session.getAttribute("username")).thenReturn(username);
-        when(bookService.findBookById(any(Integer.class))).thenReturn(book);
-        when(cartService.getCart(username)).thenReturn(userCart);
-        ResponseEntity<OrderRecord> expectedResponse = ResponseEntity.ok().build();
 
         // Act
         ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
@@ -96,15 +141,75 @@ class OrderControllerTest {
     }
 
     @Test
+    public void testCartPurchase_Failed_InvalidSession() {
+        // Arrange
+        when(session.getAttribute("username")).thenReturn(null);
+
+        // Act
+        ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    public void testCartPurchase_Failed_InvalidUsername() {
+        // Arrange
+        String username = "unknown";
+        when(session.getAttribute("username")).thenReturn(username);
+
+        // Act
+        ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    public void testCartPurchase_Failed_InvalidBook() {
+        // Arrange
+        List<CartRecord> userCart = new ArrayList<>();
+        userCart.add(new CartRecord(5, "testUser", "Book", "Author", "Type", 10.0, 10));
+        when(cartService.getCart("testUser")).thenReturn(userCart);
+
+        // Act
+        ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+    @Test
+    public void testCartPurchase_Failed_InvalidCount() {
+        // Arrange
+        List<CartRecord> userCart = new ArrayList<>();
+        userCart.add(new CartRecord(2, "testUser", "Book", "Author", "Type", 10.0, 10));
+        when(cartService.getCart("testUser")).thenReturn(userCart);
+
+        // Act
+        ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+    @Test
+    public void testCartPurchase_Failed_EmptyCart() {
+        // Arrange
+        List<CartRecord> userCart = new ArrayList<>();
+        when(cartService.getCart("testUser")).thenReturn(userCart);
+
+        // Act
+        ResponseEntity<OrderRecord> response = orderController.CartPurchase(session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+    @Test
     public void testGetOrderIds_User() {
         // Arrange
         String username = "testUser";
-        when(session.getAttribute("username")).thenReturn(username);
-        when(session.getAttribute("authority")).thenReturn("User");
         List<OrderRecord> orders = new ArrayList<>();
         orders.add(new OrderRecord(username, "2024-04-30 10:00:00"));
         when(orderService.getOrder(username)).thenReturn(orders);
-        ResponseEntity<List<OrderRecord>> expectedResponse = ResponseEntity.ok(orders);
 
         // Act
         ResponseEntity<List<OrderRecord>> response = orderController.GetOrderIds(session);
@@ -140,6 +245,53 @@ class OrderControllerTest {
         assertEquals(orders, response.getBody());
     }
 
+
+    @Test
+    public void testGetOrderIds_Failed_InvalidSession() {
+        // Arrange
+        when(session.getAttribute("username")).thenReturn(null);
+
+        // Act
+        ResponseEntity<List<OrderRecord>> response = orderController.GetOrderIds(session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+
+    @Test
+    public void testGetOrderIds_Failed_InvalidSession2() {
+        // Arrange
+        when(session.getAttribute("authority")).thenReturn(null);
+
+        // Act
+        ResponseEntity<List<OrderRecord>> response = orderController.GetOrderIds(session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+    @Test
+    public void testGetOrderIds_Failed_InvalidUsername() {
+        // Arrange
+        String username = "unknown";
+        when(session.getAttribute("username")).thenReturn(username);
+
+        // Act
+        ResponseEntity<List<OrderRecord>> response = orderController.GetOrderIds(session);
+
+        // Assert
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+    }
+    @Test
+    public void testGetOrderIds_Failed_InvalidAuth() {
+        // Arrange
+        when(session.getAttribute("authority")).thenReturn("Admin");
+
+        // Act
+        ResponseEntity<List<OrderRecord>> response = orderController.GetOrderIds(session);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
     @Test
     public void testGetOrderItems() {
         // Arrange
@@ -158,5 +310,24 @@ class OrderControllerTest {
         // Assert
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(orderItems, response.getBody());
+    }
+    @Test
+    public void testGetOrderItems_Failed() {
+        // Arrange
+        int orderId = 1;
+        OrderRecord orderRecord = new OrderRecord("testUser", "2024-04-30 10:00:00");
+        orderRecord.setRecordId(orderId);
+        List<OrderItem> orderItems = new ArrayList<>();
+        orderItems.add(new OrderItem(1, "Book Title", "Author", "Type", 10.0, 1, "testUser"));
+        orderRecord.setOrderItems(orderItems);
+        when(orderService.getRecord(orderId)).thenReturn(orderRecord);
+        ResponseEntity<List<OrderItem>> expectedResponse = ResponseEntity.ok(orderItems);
+
+        // Act
+        ResponseEntity<List<OrderItem>> response = orderController.GetOrderItems(2);
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(null, response.getBody());
     }
 }

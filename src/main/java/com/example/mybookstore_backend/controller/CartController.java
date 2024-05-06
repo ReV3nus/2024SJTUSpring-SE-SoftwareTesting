@@ -43,7 +43,7 @@ public class CartController {
         {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        if(BookId < 0)
+        if(BookId <= 0)
         {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -72,7 +72,7 @@ public class CartController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        if(BookId < 0)
+        if(BookId <= 0)
         {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }

@@ -57,7 +57,7 @@ public class OrderController {
         }
         if(optBook.getInventory() <= 0)
         {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         optBook.Remove(1);
         bookService.SaveBook(optBook);
@@ -104,7 +104,7 @@ public class OrderController {
             }
             if(optBook.getInventory() <= 0)
             {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
             }
             optBook.Remove(1);
             bookService.SaveBook(optBook);
@@ -118,7 +118,7 @@ public class OrderController {
         }
         if(orderRecord.getOrderItems().size() == 0)
         {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         System.out.println(orderRecord);
         cartService.ClearCart(username);
